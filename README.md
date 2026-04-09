@@ -9,48 +9,52 @@
 
 ---
 
-## ✨ Features
+### Open the app
+Navigate to **(https://skill2-hire-nine.vercel.app/)** in your browser.
 
-### 🎯 Skill Assessment
+
+##  Features
+
+###  Skill Assessment
 - 10 AI-generated MCQ questions tailored to your career goal
 - Supports custom goals (even abstract ones like "I want to build AI apps")
 - Optional GitHub URL, code snippet, and screenshot upload for deeper analysis
 
-### 📊 Skill Gap Analysis
+###  Skill Gap Analysis
 - Radar chart visualization comparing current vs required skills
 - Strengths and weaknesses breakdown
 - Readiness score with priority-ranked skill gaps
 
-### 📚 Personalized Curriculum
+###  Personalized Curriculum
 - AI-generated 8-12 module learning path targeting your exact gaps
 - Streaming lesson content with code examples and exercises
 - Lessons cached to save tokens on revisits
 
-### 🛠️ Guided Projects
+###  Guided Projects
 - Step-by-step project tutorials unlocked at 45% curriculum completion
 - AI-generated detailed instructions for each step
 - XP rewards per step with Builder badge on completion
 
-### 💼 Job Matching (Real Algorithm)
+### Job Matching (Real Algorithm)
 - Jobs based on skills you'll **acquire after** completing the curriculum
 - **Real match percentage** calculated server-side:
   - `matchPercentage = (fuzzy matched skills / required skills) × 100`
   - Supports exact, substring, and word-overlap matching
 - Sorted by best match; filtered by remote/onsite/hybrid/trending
 
-### 🤝 Peer-to-Peer Mentorship
+###  Peer-to-Peer Mentorship
 - AI-matched mentor profiles based on your learning path
 - Match scores, ratings, and expertise tags
 - Connect button for mentorship requests
 
-### 🎮 Gamification
+###  Gamification
 - **XP System** — Earn XP for completing modules and project steps
 - **Levels** — Level up every 500 XP
 - **Streaks** — Daily learning streak tracking
 - **Badges** — 6 earnable badges (First Lesson, 5 Lessons, Streaks, Level 5, Builder)
 - Confetti animations on achievements
 
-### 🪙 Token Usage Tracking
+###  Token Usage Tracking
 - Per-feature token breakdown (quiz, curriculum, lesson, jobs, mentors)
 - Prompt vs completion token split
 - Estimated cost display
@@ -59,7 +63,7 @@
 
 ---
 
-## 🏗️ Tech Stack
+##  Tech Stack
 
 | Layer | Technology |
 |---|---|
@@ -73,7 +77,7 @@
 
 ---
 
-## 📁 Project Structure
+##  Project Structure
 
 ```
 Skill2Hire/
@@ -117,7 +121,7 @@ Skill2Hire/
 
 ---
 
-## 🚀 Getting Started
+##  Getting Started
 
 ### Prerequisites
 - **Node.js** v18+
@@ -144,12 +148,10 @@ npm run dev
 
 This runs both the **Express backend** (port 3001) and **Vite frontend** (port 5173) concurrently.
 
-### Open the app
-Navigate to **http://localhost:5173/** in your browser.
 
 ---
 
-## 🔄 User Flow
+##  User Flow
 
 ```
 Landing → Onboarding → Quiz (AI) → Analysis → Dashboard
@@ -171,7 +173,7 @@ Landing → Onboarding → Quiz (AI) → Analysis → Dashboard
 
 ---
 
-## 🪙 Token Optimization
+##  Token Optimization
 
 | Strategy | Savings |
 |---|---|
@@ -185,7 +187,7 @@ Landing → Onboarding → Quiz (AI) → Analysis → Dashboard
 
 ---
 
-## 📊 Database Schema
+##  Database Schema
 
 8 tables: `users`, `quiz_results`, `curricula`, `progress`, `lesson_cache`, `project_steps`, `jobs_cache`, `token_usage`
 
@@ -193,7 +195,7 @@ All LLM token usage is logged per feature with prompt/completion breakdown for c
 
 ---
 
-## 🔧 API Endpoints
+##  API Endpoints
 
 | Method | Endpoint | Description | LLM |
 |---|---|---|---|
