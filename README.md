@@ -1,4 +1,4 @@
-# 🚀 Skill2Hire — AI-Powered Skill Tutor
+# Skill2Hire — AI-Powered Skill Tutor
 
 **Skill2Hire** is an intelligent learning platform that assesses your skill gaps through personalized quizzes, generates tailored curricula and project tutorials, tracks your progress with gamification, and matches you with curated job opportunities — all powered by AI.
 
@@ -215,7 +215,7 @@ All LLM token usage is logged per feature with prompt/completion breakdown for c
 
 ---
 
-## 📄 License
+## License
 
 This project is for educational purposes.
 
