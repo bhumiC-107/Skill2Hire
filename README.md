@@ -1,11 +1,6 @@
 # Skill2Hire — AI-Powered Skill Tutor
 
-**Skill2Hire** is an intelligent learning platform that assesses your skill gaps through personalized quizzes, generates tailored curricula and project tutorials, tracks your progress with gamification, and matches you with curated job opportunities — all powered by AI.
-
-![Skill2Hire](https://img.shields.io/badge/AI-Powered-6366f1?style=for-the-badge)
-![Vite](https://img.shields.io/badge/Vite-Frontend-06b6d4?style=for-the-badge)
-![Express](https://img.shields.io/badge/Express-Backend-10b981?style=for-the-badge)
-![SQLite](https://img.shields.io/badge/SQLite-Database-f59e0b?style=for-the-badge)
+**Skill2Hire** is an intelligent learning platform that assesses your skill gaps through personalized quizzes, generates tailored curricula and project tutorials, tracks your progress with gamification, and matches you with curated job opportunities — all powered by AI
 
 ---
 
@@ -77,79 +72,6 @@ Navigate to **(https://skill2-hire-nine.vercel.app/)** in your browser.
 
 ---
 
-##  Project Structure
-
-```
-Skill2Hire/
-├── index.html                 # Entry point
-├── package.json               # Dependencies & scripts
-├── vite.config.js             # Vite dev server proxy
-├── .env                       # API key (not committed)
-│
-├── server/
-│   ├── index.js               # Express server (port 3001)
-│   ├── db.js                  # SQLite schema (8 tables)
-│   ├── llm.js                 # OpenRouter client + token logging
-│   └── routes/
-│       ├── auth.js            # Registration & profile
-│       ├── quiz.js            # Quiz generation & evaluation
-│       ├── curriculum.js      # Curriculum + lesson streaming (SSE)
-│       ├── project.js         # Project generation & steps
-│       ├── jobs.js            # Job matching with real algorithm
-│       ├── mentors.js         # Mentor profile generation
-│       └── stats.js           # Dashboard stats & token usage
-│
-└── src/
-    ├── main.js                # SPA router + session management
-    ├── api.js                 # HTTP client + SSE stream handlers
-    ├── style.css              # Design system (800+ lines)
-    ├── pages/
-    │   ├── landing.js         # Hero page with particle background
-    │   ├── onboarding.js      # Registration + goal + portfolio
-    │   ├── quiz.js            # 10-question AI assessment
-    │   ├── analysis.js        # Skill gap radar chart
-    │   ├── dashboard.js       # Gamified learning hub
-    │   ├── lesson.js          # Streamed AI lesson content
-    │   ├── project.js         # Step-by-step project tutorial
-    │   ├── jobs.js            # Skill-matched job listings
-    │   └── mentors.js         # Peer mentorship page
-    └── utils/
-        ├── particles.js       # Canvas particle animation
-        ├── charts.js          # Radar chart + progress ring
-        └── gamification.js    # XP, levels, badges, confetti
-```
-
----
-
-##  Getting Started
-
-### Prerequisites
-- **Node.js** v18+
-- **npm** v9+
-- **OpenRouter API Key** ([get one here](https://openrouter.ai/settings/keys))
-
-### Installation
-
-```bash
-# 1. Clone the repository
-git clone https://github.com/bhumiC-107/Skill2Hire.git
-cd Skill2Hire
-
-# 2. Install dependencies
-npm install
-
-# 3. Create .env file
-echo "OPENROUTER_API_KEY=your_api_key_here" > .env
-echo "PORT=3001" >> .env
-
-# 4. Start the development server
-npm run dev
-```
-
-This runs both the **Express backend** (port 3001) and **Vite frontend** (port 5173) concurrently.
-
-
----
 
 ##  User Flow
 
