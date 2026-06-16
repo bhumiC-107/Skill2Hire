@@ -15,6 +15,15 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 
+// Request logging middleware for debugging
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  res.on('finish', () => {
+    console.log(`  -> Response Status: ${res.statusCode}`);
+  });
+  next();
+});
+
 // Import routes
 import authRoutes from './routes/auth.js';
 import quizRoutes from './routes/quiz.js';

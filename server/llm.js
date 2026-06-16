@@ -9,6 +9,9 @@ const MODEL = 'google/gemini-2.5-flash';
  * Non-streaming chat completion — returns parsed JSON or text
  */
 export async function chat(messages, userId, feature, db) {
+  if (!API_KEY) {
+    throw new Error('OPENROUTER_API_KEY is not configured. Please add it to your environment variables or Vercel project settings.');
+  }
   const response = await fetch(BASE_URL, {
     method: 'POST',
     headers: {
@@ -58,6 +61,9 @@ export async function chat(messages, userId, feature, db) {
  * Streaming chat completion — sends SSE chunks to Express response
  */
 export async function streamChat(messages, res, userId, feature, db) {
+  if (!API_KEY) {
+    throw new Error('OPENROUTER_API_KEY is not configured. Please add it to your environment variables or Vercel project settings.');
+  }
   const response = await fetch(BASE_URL, {
     method: 'POST',
     headers: {
