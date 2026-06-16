@@ -94,7 +94,11 @@ export async function renderAnalysis(container) {
         assessment: a,
       });
 
-      setSession({ ...getSession(), curriculumGenerated: true });
+      setSession({
+        ...getSession(),
+        curriculumGenerated: true,
+        curriculum: result.curriculum
+      });
       showToast('Curriculum created successfully!', 'success');
       window.location.hash = '#/dashboard';
     } catch (err) {

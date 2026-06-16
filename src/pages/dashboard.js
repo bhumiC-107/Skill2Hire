@@ -8,13 +8,14 @@ export async function renderDashboard(container) {
   const session = getSession();
   if (!session?.userId) { window.location.hash = '#/onboarding'; return; }
 
-  // Validate user exists in DB
+  // Validate user exists in DB — on Vercel serverless, DB may be fresh per invocation,
+  // so don't wipe session if getUser fails; just continue with localStorage session.
   try {
     await getUser(session.userId);
   } catch {
-    clearSession();
-    window.location.hash = '#/';
-    return;
+    // If user not found in DB (e.g. Vercel ephemeral DB), just continue
+    // We still have valid session in localStorage
+    console.warn('getUser failed — continuing with session data');
   }
 
   container.innerHTML = `
@@ -33,10 +34,20 @@ export async function renderDashboard(container) {
     ]);
 
     if (!currData) {
-      // No curriculum — redirect to onboarding to start fresh
-      clearSession();
-      window.location.hash = '#/';
-      return;
+      // No curriculum from DB — check if we have it in session (e.g. just generated)
+      if (session.curriculum) {
+        // Use the session-cached curriculum
+        currData = { curriculum: session.curriculum, totalXP: session.curriculum.totalXP || 0 };
+      } else if (session.curriculumGenerated) {
+        // Curriculum was generated this session but not retrievable — redirect to analysis to retry
+        showToast('Curriculum not found — please regenerate', 'error');
+        window.location.hash = '#/analysis';
+        return;
+      } else {
+        // No curriculum at all — go back to quiz
+        window.location.hash = '#/quiz';
+        return;
+      }
     }
 
     const curriculum = currData.curriculum;

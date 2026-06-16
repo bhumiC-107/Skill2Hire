@@ -17,7 +17,17 @@ export async function renderLesson(container, moduleIndex) {
   `;
 
   try {
-    const currData = await getCurriculum(session.userId);
+    let currData;
+    try {
+      currData = await getCurriculum(session.userId);
+    } catch {
+      // Vercel ephemeral DB may not have curriculum — fall back to session cache
+      if (session.curriculum) {
+        currData = { curriculum: session.curriculum };
+      } else {
+        throw new Error('Curriculum not found. Please go back to dashboard.');
+      }
+    }
     const modules = currData.curriculum.modules || [];
     const mod = modules[moduleIndex];
 
