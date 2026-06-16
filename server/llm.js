@@ -3,7 +3,7 @@ dotenv.config();
 
 const API_KEY = process.env.OPENROUTER_API_KEY;
 const BASE_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const MODEL = 'google/gemini-2.0-flash-001';
+const MODEL = 'google/gemini-2.5-flash';
 
 /**
  * Non-streaming chat completion — returns parsed JSON or text
@@ -153,6 +153,9 @@ export async function streamChat(messages, res, userId, feature, db) {
  */
 export function parseJSON(text) {
   let cleaned = text.trim();
+  // Remove thinking blocks
+  cleaned = cleaned.replace(/<think>[\s\S]*?<\/think>/g, '');
+  cleaned = cleaned.trim();
   // Remove markdown code fences
   if (cleaned.startsWith('```')) {
     cleaned = cleaned.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '');
