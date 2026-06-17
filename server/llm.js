@@ -3,7 +3,7 @@ dotenv.config();
 
 const API_KEY = process.env.OPENROUTER_API_KEY;
 const BASE_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const MODEL = 'google/gemini-2.5-flash';
+const MODEL = 'google/gemini-2.0-flash-lite:free';
 
 /**
  * Non-streaming chat completion — returns parsed JSON or text
@@ -24,7 +24,7 @@ export async function chat(messages, userId, feature, db) {
       model: MODEL,
       messages,
       temperature: 0.7,
-      max_tokens: 2000,
+      max_tokens: 1500,
     }),
   });
 
@@ -76,7 +76,7 @@ export async function streamChat(messages, res, userId, feature, db) {
       model: MODEL,
       messages,
       temperature: 0.7,
-      max_tokens: 2500,
+      max_tokens: 1500,
       stream: true,
     }),
   });
