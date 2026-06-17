@@ -3,7 +3,7 @@ dotenv.config();
 
 const API_KEY = process.env.OPENROUTER_API_KEY;
 const BASE_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const MODEL = 'google/gemini-2.0-flash-lite:free';
+const MODEL = 'meta-llama/llama-3.3-70b-instruct:free';
 
 /**
  * Non-streaming chat completion — returns parsed JSON or text
