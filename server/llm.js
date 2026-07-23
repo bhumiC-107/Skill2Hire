@@ -1,6 +1,9 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
+const API_KEY = process.env.OPENROUTER_API_KEY;
+const BASE_URL = 'https://openrouter.ai/api/v1/chat/completions';
+
 // Ordered list of free models to try — if one is rate-limited, we try the next
 const FREE_MODELS = [
   'meta-llama/llama-3.3-70b-instruct:free',
