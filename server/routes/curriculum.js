@@ -30,8 +30,20 @@ Create a curriculum of 8-12 modules addressing skill gaps. Each module builds on
       }
     ];
 
-    const { content, usage } = await chat(messages, userId, 'curriculum_generate', db);
-    const curriculum = parseJSON(content);
+    let curriculum;
+    let usageData = null;
+    try {
+      const { content, usage } = await chat(messages, userId, 'curriculum_generate', db);
+      usageData = usage;
+      curriculum = parseJSON(content);
+    } catch (llmErr) {
+      console.warn('Curriculum LLM parse failed, generating goal fallback curriculum:', llmErr.message);
+      curriculum = createFallbackCurriculum(goal);
+    }
+
+    if (!curriculum || !Array.isArray(curriculum.modules)) {
+      curriculum = createFallbackCurriculum(goal);
+    }
 
     // Calculate total XP
     let totalXP = 0;
@@ -43,12 +55,30 @@ Create a curriculum of 8-12 modules addressing skill gaps. Each module builds on
       'INSERT OR REPLACE INTO curricula (user_id, modules_json, total_xp, skill_gap_json) VALUES (?, ?, ?, ?)'
     ).run(userId, JSON.stringify(curriculum), totalXP, JSON.stringify(assessment));
 
-    res.json({ curriculum, usage });
+    res.json({ curriculum, usage: usageData });
   } catch (err) {
     console.error('Curriculum generate error:', err);
     res.status(500).json({ error: err.message });
   }
 });
+
+function createFallbackCurriculum(goal) {
+  const g = goal || 'Software Engineer';
+  return {
+    title: `${g} Core Learning Path`,
+    description: `Comprehensive 8-module mastery curriculum targeted at becoming a proficient ${g}.`,
+    modules: [
+      { index: 0, title: `Foundations of ${g}`, description: 'Master fundamental language mechanics, syntax, and essential toolings.', skills: ['Core Syntax', 'Environment Setup'], xpReward: 100, estimatedMinutes: 30, difficulty: 'beginner', topics: ['Syntax', 'Tooling', 'CLI'] },
+      { index: 1, title: 'Data Structures & Algorithmic Thinking', description: 'Understand arrays, maps, complexity analysis, and algorithmic patterns.', skills: ['Data Structures', 'Algorithms'], xpReward: 120, estimatedMinutes: 45, difficulty: 'beginner', topics: ['Arrays', 'Hash Maps', 'Big-O'] },
+      { index: 2, title: 'System Architecture & Modular Design', description: 'Design modular, maintainable, and clean code structures.', skills: ['OOP', 'Design Patterns'], xpReward: 150, estimatedMinutes: 40, difficulty: 'intermediate', topics: ['Modularity', 'Abstractions', 'Design Patterns'] },
+      { index: 3, title: 'Asynchronous Programming & Data Fetching', description: 'Master async flows, promises, network requests, and event loops.', skills: ['Async/Await', 'Networking'], xpReward: 150, estimatedMinutes: 50, difficulty: 'intermediate', topics: ['Promises', 'HTTP/REST', 'Event Loop'] },
+      { index: 4, title: 'Database Design & Data Persistence', description: 'Learn relational and key-value database querying and optimization.', skills: ['Databases', 'SQL'], xpReward: 180, estimatedMinutes: 60, difficulty: 'intermediate', topics: ['Relational DBs', 'Indexing', 'ORMs'] },
+      { index: 5, title: 'API Integration & Web Services', description: 'Build and consume RESTful APIs, auth headers, and web services.', skills: ['API Design', 'Security'], xpReward: 200, estimatedMinutes: 45, difficulty: 'intermediate', topics: ['REST', 'Auth', 'JSON'] },
+      { index: 6, title: 'Automated Testing & Quality Assurance', description: 'Write unit tests, integration tests, and handle errors resiliently.', skills: ['Testing', 'Debugging'], xpReward: 200, estimatedMinutes: 40, difficulty: 'advanced', topics: ['Unit Tests', 'Mocking', 'Error Handling'] },
+      { index: 7, title: `Production Deployment & ${g} Capstone`, description: 'Deploy applications, configure CI/CD pipelines, and monitor metrics.', skills: ['DevOps', 'Deployment'], xpReward: 250, estimatedMinutes: 60, difficulty: 'advanced', topics: ['CI/CD', 'Containers', 'Monitoring'] }
+    ]
+  };
+}
 
 // Get curriculum
 router.get('/:userId', (req, res) => {

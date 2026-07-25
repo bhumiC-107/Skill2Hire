@@ -3,21 +3,80 @@ dotenv.config();
 
 const API_KEY = process.env.OPENROUTER_API_KEY;
 const BASE_URL = 'https://openrouter.ai/api/v1/chat/completions';
+const MODELS_URL = 'https://openrouter.ai/api/v1/models';
 
-// Ordered list of free models to try — if one is rate-limited, we try the next
-const FREE_MODELS = [
-  'meta-llama/llama-3.3-70b-instruct:free',
-  'google/gemma-4-31b-it:free',
-  'nousresearch/hermes-3-llama-3.1-405b:free',
-  'openai/gpt-oss-120b:free',
-  'qwen/qwen3-coder:free',
+// Primary list of active free models on OpenRouter
+const STATIC_FREE_MODELS = [
+  'inclusionai/ling-3.0-flash:free',
+  'cohere/north-mini-code:free',
+  'nvidia/nemotron-3-nano-30b-a3b:free',
+  'openai/gpt-oss-20b:free',
+  'google/gemma-4-26b-a4b-it:free',
+  'nvidia/nemotron-nano-9b-v2:free',
+  'poolside/laguna-xs-2.1:free',
+  'nvidia/nemotron-3-super-120b-a12b:free',
 ];
 
+let dynamicFreeModelsCache = null;
+let lastCacheFetchTime = 0;
+
 /**
- * Try a single model — returns { content, usage } or throws on non-retryable error
- * Returns null if rate-limited (429) so caller can try next model
+ * Dynamically fetch active free models from OpenRouter if static list fails
  */
-async function tryModel(model, messages, maxTokens) {
+async function getActiveFreeModels() {
+  const now = Date.now();
+  // Cache for 10 minutes
+  if (dynamicFreeModelsCache && (now - lastCacheFetchTime < 600000)) {
+    return dynamicFreeModelsCache;
+  }
+
+  try {
+    const res = await fetch(MODELS_URL);
+    if (res.ok) {
+      const data = await res.json();
+      const liveFree = (data.data || [])
+        .filter(m => m.id && m.id.endsWith(':free'))
+        .map(m => m.id);
+
+      if (liveFree.length > 0) {
+        // Merge static list with live free models (putting static working ones first)
+        const combined = [...new Set([...STATIC_FREE_MODELS, ...liveFree])];
+        dynamicFreeModelsCache = combined;
+        lastCacheFetchTime = now;
+        return combined;
+      }
+    }
+  } catch (err) {
+    console.warn('Failed to fetch dynamic OpenRouter models list:', err.message);
+  }
+
+  return STATIC_FREE_MODELS;
+}
+
+/**
+ * Sanitize message content for non-multimodal models if array format is rejected
+ */
+function normalizeMessages(messages, textOnly = false) {
+  if (!textOnly) return messages;
+
+  return messages.map(msg => {
+    if (Array.isArray(msg.content)) {
+      const textParts = msg.content
+        .filter(item => item.type === 'text')
+        .map(item => item.text)
+        .join('\n');
+      return { ...msg, content: textParts || 'User provided context' };
+    }
+    return msg;
+  });
+}
+
+/**
+ * Try a single model — returns { content, usage } or null on retryable error
+ */
+async function tryModel(model, messages, maxTokens, isTextOnlyRetry = false) {
+  const finalMessages = normalizeMessages(messages, isTextOnlyRetry);
+
   const response = await fetch(BASE_URL, {
     method: 'POST',
     headers: {
@@ -28,7 +87,7 @@ async function tryModel(model, messages, maxTokens) {
     },
     body: JSON.stringify({
       model,
-      messages,
+      messages: finalMessages,
       temperature: 0.7,
       max_tokens: maxTokens,
     }),
@@ -36,14 +95,18 @@ async function tryModel(model, messages, maxTokens) {
 
   if (response.status === 429 || response.status === 503) {
     console.warn(`Model ${model} rate-limited (${response.status}), trying next...`);
-    return null; // signal to try next model
+    return null;
   }
 
   if (!response.ok) {
     const errText = await response.text();
-    // 400 = invalid model ID — also try next
-    if (response.status === 400) {
-      console.warn(`Model ${model} returned 400, trying next...`);
+    // 400 = invalid model ID or invalid request payload
+    if (response.status === 400 || response.status === 404) {
+      if (!isTextOnlyRetry && messages.some(m => Array.isArray(m.content))) {
+        // Retry with text-only payload if content contained image array
+        return tryModel(model, messages, maxTokens, true);
+      }
+      console.warn(`Model ${model} returned ${response.status}, trying next...`);
       return null;
     }
     throw new Error(`OpenRouter API error ${response.status}: ${errText}`);
@@ -55,18 +118,20 @@ async function tryModel(model, messages, maxTokens) {
 }
 
 /**
- * Non-streaming chat completion — tries each free model until one succeeds
+ * Non-streaming chat completion — tries free models until one succeeds
  */
 export async function chat(messages, userId, feature, db) {
   if (!API_KEY) {
     throw new Error('OPENROUTER_API_KEY is not configured. Please add it to your environment variables or Vercel project settings.');
   }
 
+  const freeModels = await getActiveFreeModels();
   let lastError = null;
-  for (const model of FREE_MODELS) {
+
+  for (const model of freeModels) {
     try {
-      const result = await tryModel(model, messages, 1500);
-      if (result === null) continue; // rate-limited, try next
+      const result = await tryModel(model, messages, 3500);
+      if (result === null) continue;
 
       // Track token usage
       if (result.usage && db && userId) {
@@ -97,7 +162,6 @@ export async function chat(messages, userId, feature, db) {
   throw lastError || new Error('All AI models are currently unavailable. Please try again in a moment.');
 }
 
-
 /**
  * Streaming chat completion — sends SSE chunks to Express response
  */
@@ -106,40 +170,45 @@ export async function streamChat(messages, res, userId, feature, db) {
     throw new Error('OPENROUTER_API_KEY is not configured. Please add it to your environment variables or Vercel project settings.');
   }
 
+  const freeModels = await getActiveFreeModels();
   let response = null;
   let chosenModel = null;
 
-  for (const model of FREE_MODELS) {
-    const r = await fetch(BASE_URL, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${API_KEY}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://skill2hire.vercel.app',
-        'X-Title': 'Skill2Hire AI Tutor',
-      },
-      body: JSON.stringify({
-        model,
-        messages,
-        temperature: 0.7,
-        max_tokens: 1500,
-        stream: true,
-      }),
-    });
+  for (const model of freeModels) {
+    try {
+      const r = await fetch(BASE_URL, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${API_KEY}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'https://skill2hire.vercel.app',
+          'X-Title': 'Skill2Hire AI Tutor',
+        },
+        body: JSON.stringify({
+          model,
+          messages,
+          temperature: 0.7,
+          max_tokens: 1500,
+          stream: true,
+        }),
+      });
 
-    if (r.status === 429 || r.status === 503 || r.status === 400) {
-      console.warn(`streamChat: model ${model} returned ${r.status}, trying next...`);
-      continue;
+      if (r.status === 429 || r.status === 503 || r.status === 400 || r.status === 404) {
+        console.warn(`streamChat: model ${model} returned ${r.status}, trying next...`);
+        continue;
+      }
+
+      if (!r.ok) {
+        const errText = await r.text();
+        throw new Error(`OpenRouter API error ${r.status}: ${errText}`);
+      }
+
+      response = r;
+      chosenModel = model;
+      break;
+    } catch (err) {
+      console.warn(`streamChat: model ${model} fetch failed (${err.message}), trying next...`);
     }
-
-    if (!r.ok) {
-      const errText = await r.text();
-      throw new Error(`OpenRouter API error ${r.status}: ${errText}`);
-    }
-
-    response = r;
-    chosenModel = model;
-    break;
   }
 
   if (!response) {
@@ -216,34 +285,82 @@ export async function streamChat(messages, res, userId, feature, db) {
   return { content: fullContent, usage: usageData };
 }
 
-
 /**
- * Parse JSON from LLM response — handles markdown code blocks
+ * Parse JSON from LLM response — resiliently handles markdown code blocks, thinking tags, trailing commas, and partial JSON truncation
  */
 export function parseJSON(text) {
-  let cleaned = text.trim();
-  // Remove thinking blocks
-  cleaned = cleaned.replace(/<think>[\s\S]*?<\/think>/g, '');
-  cleaned = cleaned.trim();
-  // Remove markdown code fences
-  if (cleaned.startsWith('```')) {
-    cleaned = cleaned.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '');
+  if (!text || typeof text !== 'string') {
+    throw new Error('Failed to parse LLM JSON response: empty content');
   }
-  // Remove trailing commas before ] or }
-  cleaned = cleaned.replace(/,\s*([\]}])/g, '$1');
-  // Try parsing
+
+  let cleaned = text.trim();
+  // 1. Remove thinking blocks (<think>...</think>)
+  cleaned = cleaned.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+
+  // 2. Remove markdown code fences anywhere in text
+  cleaned = cleaned.replace(/```(?:json)?\s*([\s\S]*?)\s*```/gi, '$1').trim();
+
+  // 3. Remove non-JSON preambles or postambles if brackets exist
+  const firstBracket = cleaned.indexOf('[');
+  const lastBracket = cleaned.lastIndexOf(']');
+  const firstBrace = cleaned.indexOf('{');
+  const lastBrace = cleaned.lastIndexOf('}');
+
+  const cleanString = (str) => str
+    .replace(/,\s*([\]}])/g, '$1') // remove trailing commas
+    .replace(/[\u0000-\u001F\u007F-\u009F]/g, ' '); // remove illegal control chars
+
+  // Try direct parse
   try {
-    return JSON.parse(cleaned);
+    return JSON.parse(cleanString(cleaned));
   } catch (e) {
-    // Try to extract JSON array or object
-    const arrayMatch = cleaned.match(/\[[\s\S]*\]/);
-    if (arrayMatch) {
-      try { return JSON.parse(arrayMatch[0].replace(/,\s*([\]}])/g, '$1')); } catch {}
+    // Try array slice if array brackets present
+    if (firstBracket !== -1 && lastBracket !== -1 && lastBracket > firstBracket) {
+      const arrCandidate = cleaned.slice(firstBracket, lastBracket + 1);
+      try {
+        return JSON.parse(cleanString(arrCandidate));
+      } catch (err) {}
     }
-    const objMatch = cleaned.match(/\{[\s\S]*\}/);
-    if (objMatch) {
-      try { return JSON.parse(objMatch[0].replace(/,\s*([\]}])/g, '$1')); } catch {}
+
+    // Try object slice if object braces present
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      const objCandidate = cleaned.slice(firstBrace, lastBrace + 1);
+      try {
+        return JSON.parse(cleanString(objCandidate));
+      } catch (err) {}
     }
+
+    // Handle truncated JSON array (missing closing ])
+    if (firstBracket !== -1) {
+      const partialArr = cleaned.slice(firstBracket);
+      const objects = [];
+      const objRegex = /\{[\s\S]*?\}(?=\s*,|\s*\]|\s*$)/g;
+      let match;
+      while ((match = objRegex.exec(partialArr)) !== null) {
+        try {
+          objects.push(JSON.parse(cleanString(match[0])));
+        } catch (err) {}
+      }
+      if (objects.length > 0) {
+        return objects;
+      }
+    }
+
+    // Handle truncated JSON object (missing closing })
+    if (firstBrace !== -1) {
+      let partialObj = cleaned.slice(firstBrace);
+      let openBraces = (partialObj.match(/\{/g) || []).length;
+      let closeBraces = (partialObj.match(/\}/g) || []).length;
+      while (openBraces > closeBraces) {
+        partialObj += '}';
+        closeBraces++;
+      }
+      try {
+        return JSON.parse(cleanString(partialObj));
+      } catch (err) {}
+    }
+
     throw new Error('Failed to parse LLM JSON response');
   }
 }
+

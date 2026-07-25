@@ -28,7 +28,7 @@ export async function renderDashboard(container) {
   `;
 
   try {
-    const [currData, statsData] = await Promise.all([
+    let [currData, statsData] = await Promise.all([
       getCurriculum(session.userId).catch(() => null),
       getStats(session.userId).catch(() => null),
     ]);
